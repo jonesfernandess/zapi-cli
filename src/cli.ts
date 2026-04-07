@@ -31,7 +31,7 @@ const dim = chalk.dim;
 const zapiGradient = gradient(["#98de62", "#5cb85c"]);
 
 function showBanner(): void {
-  const banner = figlet.textSync("ZAPI CLI", { horizontalLayout: "default" });
+  const banner = figlet.textSync("Z-API CLI", { horizontalLayout: "default" });
   console.log(zapiGradient(banner));
   console.log(dim("  Z-API WhatsApp API from the terminal\n"));
 }
@@ -162,7 +162,7 @@ function bootCommander(): void {
     .name("zapi")
     .description("CLI tool for Z-API WhatsApp API")
     .version("1.0.0")
-    .addHelpText("beforeAll", chalk.bold.hex("#98de62")("\n  ZAPI CLI") + chalk.gray(" — WhatsApp API from the terminal\n"));
+    .addHelpText("beforeAll", chalk.bold.hex("#98de62")("\n  Z-API CLI") + chalk.gray(" — WhatsApp API from the terminal\n"));
 
   // Setup command (so it shows in help)
   program.command("setup").description("Run interactive setup wizard").action(async () => {

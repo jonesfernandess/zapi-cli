@@ -60,7 +60,7 @@ const dim = chalk.dim;
 const zapiGradient = gradient(["#78c43f", "#98de62", "#b8f484"]);
 
 function showBanner(): void {
-  const banner = figlet.textSync("ZAPI", {
+  const banner = figlet.textSync("Z-API", {
     font: "ANSI Shadow",
     horizontalLayout: "fitted",
   });
@@ -68,7 +68,7 @@ function showBanner(): void {
   console.log(zapiGradient(banner));
   console.log(dim("  ─────────────────────────────────────────────────────"));
   console.log(
-    `  ${accent("●")} ${chalk.bold.white("ZAPI CLI")}  ${dim("— Z-API WhatsApp from the terminal")}`,
+    `  ${accent("●")} ${chalk.bold.white("Z-API CLI")}  ${dim("— Z-API WhatsApp from the terminal")}`,
   );
   console.log(dim("  ─────────────────────────────────────────────────────"));
 }
@@ -97,7 +97,7 @@ async function runSetupWizard(config: ZapiConfig): Promise<void> {
   console.clear();
   showBanner();
 
-  p.intro(chalk.bold("Vamos configurar a ZAPI CLI!"));
+  p.intro(chalk.bold("Vamos configurar a Z-API CLI!"));
 
   // Step 1: Instance ID
   console.log("");
