@@ -19,6 +19,8 @@ A Z-API expoe uma API REST poderosa para automacao de WhatsApp. Mas interagir co
 
 Chega de copiar e colar tokens em URLs ou consultar a documentacao a cada request.
 
+![Z-API CLI menu interativo](screenshot.jpeg)
+
 ## Instalacao
 
 Um comando:
