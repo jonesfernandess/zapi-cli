@@ -189,6 +189,10 @@ npm run lint     # Type-check without emitting
 - **@clack/prompts** for the interactive menu
 - **chalk** + **gradient-string** + **figlet** for terminal styling
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=jonesfernandess/zapi-cli&type=Date)](https://star-history.com/#jonesfernandess/zapi-cli&Date)
+
 ## License
 
 MIT
