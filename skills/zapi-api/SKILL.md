@@ -1,33 +1,60 @@
 ---
 name: zapi-api
-description: Z-API REST API reference for WhatsApp integrations. Complete endpoint contracts — method, URL path, auth, body fields, and response shapes. Use this to implement Z-API in any language.
+description: Z-API REST API reference for WhatsApp integrations. Complete endpoint contracts — method, URL path, auth, body fields, response shapes, and known gotchas. Use this to implement Z-API in any language.
 ---
 
 ## Authentication
 
-Z-API uses URL-based authentication. Every endpoint is scoped to a specific instance:
+Z-API uses URL-based authentication. Every instance-scoped endpoint uses:
 
 ```
 https://api.z-api.io/instances/{instanceId}/token/{instanceToken}/{endpoint}
 ```
 
-Optional security header (when security token is configured on the instance):
+**Required headers for every request:**
 ```
-Client-Token: {securityToken}
+Content-Type: application/json
+Accept: application/json
+Client-Token: {securityToken}    ← REQUIRED if configured on the instance
 ```
 
-Environment variables used by zapi-cli:
+The `Client-Token` header is **not optional** for most production instances. If not sent
+when the instance requires it, Z-API returns HTTP 400 `{"error":"your client-token is not configured"}`.
+If sent with the wrong value, it returns HTTP 403 `{"error":"Client-Token X not allowed"}`.
+Find the Security Token in the Z-API dashboard under the instance's Security settings.
+
+**Environment variables (used by zapi-cli):**
 - `ZAPI_INSTANCE_ID` — instance ID
 - `ZAPI_TOKEN` — instance token
-- `ZAPI_SECURITY_TOKEN` — optional security token (sent as Client-Token header)
+- `ZAPI_SECURITY_TOKEN` — security token sent as `Client-Token` header
 
-## Instance
+**Phone number format:** full international number, digits only, no `+` or spaces.
+Brazil example: `5511999990000` (55 = country, 11 = area code, 9-digit number).
 
-**GET /status** — Connection status. Returns `{ connected: bool, smartphoneConnected: bool, ... }`
+## Critical: value:false means failure
 
-**GET /restart** — Restart the instance.
+Z-API frequently returns **HTTP 200** with `{"value": false}` to indicate failure
+(disconnected instance, invalid phone, etc.). Never treat HTTP 200 alone as success —
+always check the response body. A successful send returns fields like `zaapId` and `messageId`.
 
-**GET /disconnect** — Disconnect from WhatsApp.
+```json
+// Failure (HTTP 200, but operation did not execute):
+{"value": false}
+
+// Success:
+{"zaapId": "ZAAP_ID", "messageId": "MSG_ID", "id": "ID"}
+```
+
+## Instance endpoints
+
+All instance endpoints are scoped to `{base}/{endpoint}` where `base` is the instance URL above.
+
+**GET /status** — Connection status.
+Response: `{ connected: bool, smartphoneConnected: bool, session: string, phone: string }`
+
+**GET /restart** — Restart the instance. *(uses GET, not POST)*
+
+**GET /disconnect** — Disconnect from WhatsApp. *(uses GET, not POST)*
 
 **GET /me** — Instance info/data.
 
@@ -35,19 +62,17 @@ Environment variables used by zapi-cli:
 
 **GET /qr-code** — QR code bytes for connection.
 
-**GET /qr-code/image** — QR code as image.
+**GET /qr-code/image** — QR code as image URL.
 
 **GET /qr-code/phone** — QR code for phone number pairing.
 
-**PUT /profile-name** `{ value: string }` — Update display name.
+**PUT /profile-name** `{ value: string }` — Update display name. *(PUT, not POST)*
 
-**PUT /profile-picture** `{ value: string }` — Update profile picture (URL or base64).
+**PUT /profile-picture** `{ value: string }` — Update profile picture (URL or base64). *(PUT, not POST)*
 
-**PUT /profile-description** `{ value: string }` — Update profile description/bio.
+**PUT /profile-description** `{ value: string }` — Update profile description/bio. *(PUT, not POST)*
 
-**PUT /update-auto-read-message** `{ value: bool }` — Toggle auto-read.
-
-**POST /restart** — Restart instance.
+**PUT /update-auto-read-message** `{ value: bool }` — Toggle auto-read. *(PUT, not POST)*
 
 **PUT /update-call-reject-auto** `{ value: bool }` — Auto-reject calls.
 
@@ -55,7 +80,7 @@ Environment variables used by zapi-cli:
 
 ## Messages — Send
 
-All send endpoints are POST with body containing at minimum `phone` (recipient number).
+All send endpoints: `POST {base}/{endpoint}` with JSON body containing at minimum `phone`.
 
 **POST /send-text** `{ phone, message }` — Plain text.
 
@@ -71,7 +96,7 @@ All send endpoints are POST with body containing at minimum `phone` (recipient n
 
 **POST /send-ptv** `{ phone, video }` — PTV (push-to-talk video).
 
-**POST /send-document/{ext}** `{ phone, document, fileName? }` — Document. `ext` = pdf, docx, xlsx, etc.
+**POST /send-document/{ext}** `{ phone, document, fileName? }` — Document. `ext` in path = pdf, docx, xlsx, etc.
 
 **POST /send-link** `{ phone, message, linkUrl, image?, title?, linkDescription? }` — Link with preview.
 
@@ -83,15 +108,13 @@ All send endpoints are POST with body containing at minimum `phone` (recipient n
 
 **POST /send-button-actions** `{ phone, message, buttons: [{label, id?}], title?, footer? }` — Action buttons.
 
-**POST /send-button-list** `{ phone, message, buttonText, sectionList: [{title, rows:[{title,description?,rowId?}]}], title?, footer? }` — List message.
+**POST /send-button-list** `{ phone, message, buttonText, sectionList: [{title, rows:[{title, description?, rowId?}]}], title?, footer? }` — List message (button opens a list).
 
-**POST /send-button-actions** `{ phone, message, buttons, title?, footer? }` — Text with action buttons.
+**POST /send-image-actions** `{ phone, message, image, buttons: [{label, id?}], title?, footer? }` — Image with action buttons.
 
-**POST /send-image-actions** `{ phone, message, image, buttons, title?, footer? }` — Image with buttons.
+**POST /send-video-actions** `{ phone, message, video, buttons: [{label, id?}], title?, footer? }` — Video with action buttons.
 
-**POST /send-video-actions** `{ phone, message, video, buttons, title?, footer? }` — Video with buttons.
-
-**POST /send-option-list** `{ phone, message, optionList: {title, options:[{title,description?,optionId?}]}, title?, footer? }` — Option list.
+**POST /send-option-list** `{ phone, message, optionList: {title, options:[{title, description?, optionId?}]}, title?, footer? }` — Option list.
 
 **POST /send-button-otp** `{ phone, message, otpCode }` — OTP button.
 
@@ -101,21 +124,21 @@ All send endpoints are POST with body containing at minimum `phone` (recipient n
 
 **POST /send-catalog** `{ phone, catalogId, message? }` — Send full catalog.
 
-**POST /send-poll** `{ phone, message, poll: {name, values:[], selectableCount?} }` — Poll.
+**POST /send-poll** `{ phone, message, poll: {name, values: [], selectableCount?} }` — Poll.
 
 **POST /send-poll-vote** `{ phone, messageId, pollVotes: [string] }` — Vote on a poll.
 
 **POST /send-carousel** `{ phone, message, cards: [{...}] }` — Carousel of cards.
 
-**POST /send-event** `{ phone, subject, description?, startDate, endDate, location?, ... }` — Event message.
+**POST /send-event** `{ phone, subject, description?, startDate, endDate, location? }` — Event message.
 
-**POST /reply-event** `{ phone, messageId, action }` — RSVP event. `action`: ACCEPTED|DECLINED|TENTATIVE.
+**POST /reply-event** `{ phone, messageId, action }` — RSVP. `action`: ACCEPTED|DECLINED|TENTATIVE.
 
-**POST /send-order-approval** `{ phone, orderId, ... }` — Send order approval.
+**POST /send-order-approval** `{ phone, orderId }` — Send order approval.
 
-**POST /send-order-status** `{ phone, orderId, status, ... }` — Order status update.
+**POST /send-order-status** `{ phone, orderId, status }` — Order status update.
 
-**POST /send-order-payment** `{ phone, orderId, ... }` — Order payment update.
+**POST /send-order-payment** `{ phone, orderId }` — Order payment update.
 
 ## Messages — Manage
 
@@ -125,11 +148,11 @@ All send endpoints are POST with body containing at minimum `phone` (recipient n
 
 **POST /reply-message** `{ phone, message, messageId, replyFrom? }` — Reply.
 
-**POST /send-reaction** `{ phone, messageId, emoji }` — Add reaction.
+**POST /send-reaction** `{ phone, messageId, emoji }` — Add emoji reaction.
 
 **POST /remove-reaction** `{ phone, messageId }` — Remove reaction.
 
-**POST /forward-message** `{ phone, messageId, conversationFrom }` — Forward.
+**POST /forward-message** `{ phone, messageId, conversationFrom }` — Forward message.
 
 **POST /pin-message** `{ phone, messageId, duration }` — Pin. `duration`: 0 (unpin), 7, 30 (days).
 
@@ -273,25 +296,25 @@ All send endpoints are POST with body containing at minimum `phone` (recipient n
 
 ## Webhooks
 
-All webhook endpoints use PUT method.
+All webhook endpoints use **PUT** on the instance-scoped URL.
 
-**PUT /update-every-webhooks** `{ value: url }` — Set all webhook events to same URL.
+**PUT /update-every-webhooks** `{ value: url }` — Set all events to same URL at once.
 
-**PUT /update-webhook-on-send** `{ value: url }` — On message sent.
+**PUT /update-webhook-on-send** `{ value: url }` — On message sent by you.
 
 **PUT /update-webhook-received** `{ value: url }` — On message received.
 
-**PUT /update-webhook-received-sent-by-me** `{ value: url }` — On received (including sent by me).
+**PUT /update-webhook-received-sent-by-me** `{ value: url }` — On received (including self-sent).
 
-**PUT /update-webhook-on-disconnect** `{ value: url }` — On disconnect.
+**PUT /update-webhook-on-disconnect** `{ value: url }` — On disconnect event.
 
-**PUT /update-webhook-message-status** `{ value: url }` — On message status update.
+**PUT /update-webhook-message-status** `{ value: url }` — On message status (sent/delivered/read).
 
 **PUT /update-webhook-chat-status** `{ value: url }` — On chat status update.
 
-**PUT /update-webhook-on-connected** `{ value: url }` — On connect.
+**PUT /update-webhook-on-connected** `{ value: url }` — On connect event.
 
-**PUT /update-notify-sent-by-me** `{ value: bool }` — Include self-sent messages.
+**PUT /update-notify-sent-by-me** `{ value: bool }` — Include self-sent messages in received webhook.
 
 ## Privacy
 
@@ -303,13 +326,13 @@ All webhook endpoints use PUT method.
 
 **POST /about-privacy** `{ value }` — About/bio visibility. Values: `all` | `contacts` | `none`.
 
-**POST /groups-privacy** `{ value }` — Who can add to groups. Values: `all` | `contacts` | `none`.
+**POST /groups-privacy** `{ value }` — Who can add you to groups. Values: `all` | `contacts` | `none`.
 
 **POST /online-privacy** `{ value: bool }` — Online visibility.
 
 **POST /read-receipts** `{ value: bool }` — Read receipts (blue ticks).
 
-**POST /temporary-messages** `{ value }` — Default message expiration. Values: `off` | `24hours` | `7days` | `90days`.
+**POST /temporary-messages** `{ value }` — Default disappearing messages. Values: `off` | `24hours` | `7days` | `90days`.
 
 ## Message Queue
 
@@ -349,15 +372,13 @@ All webhook endpoints use PUT method.
 
 ## WhatsApp Business — Collections
 
-**POST /catalog-config** `{ ... }` — Catalog configuration.
-
 **POST /create-collection** `{ name }` — Create collection.
 
 **GET /collections** — List collections.
 
-**DELETE /collection/{collectionId}** — Delete collection.
-
 **POST /collection/{collectionId}** `{ name }` — Edit collection.
+
+**DELETE /collection/{collectionId}** — Delete collection.
 
 **GET /collection/{collectionId}/products** — Products in collection.
 
@@ -375,24 +396,27 @@ All webhook endpoints use PUT method.
 
 **POST /business-websites** `{ websites: [string] }` — Update websites.
 
-**POST /business-hours** `{ ... }` — Update business hours.
-
-## WhatsApp Business — Categories
-
-**GET /business-categories** — List available categories.
+**GET /business-categories** — List available business categories.
 
 **POST /assign-business-category** `{ categoryId }` — Assign category.
 
 ## Partners
 
-**POST /create-instance** `{ name }` — Create a new instance.
+Partner endpoints that are **NOT** instance-scoped use the base Z-API URL directly.
+The `Client-Token` header must still be sent with a partner-level security token.
 
-**POST /sign-instance** `{ instanceId }` — Sign/activate an instance.
+**POST https://api.z-api.io/instances/integrator/on-demand**
+`{ name }` — Create a new instance. *(absolute URL, no instance/token in path)*
 
-**POST /cancel-instance/{instanceId}` — Cancel an instance.
+**GET https://api.z-api.io/instances?page=1&pageSize=50**
+— List all instances. *(absolute URL, no instance/token in path)*
 
-**GET /list-instances** — List all instances.
+**POST {base}/integrator/on-demand/subscription**
+`{ instanceId }` — Sign/activate an instance. *(instance-scoped)*
+
+**POST {base}/integrator/on-demand/cancel**
+`{ instanceId }` — Cancel an instance. *(instance-scoped)*
 
 ## Calls
 
-**POST /send-call** `{ phone }` — Initiate a call.
+**POST /send-call** `{ phone }` — Initiate a WhatsApp call.
