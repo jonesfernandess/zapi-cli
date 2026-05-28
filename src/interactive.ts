@@ -372,10 +372,10 @@ async function handleTestConnection(config: ZapiConfig): Promise<void> {
 
 async function handleListInstances(config: ZapiConfig): Promise<void> {
   if (!config.partnerToken) {
-    p.log.warn("Para listar instancias, voce precisa de um Partner Token.");
-    p.log.message(dim("  Este e diferente do Security Token da instancia."));
-    p.log.message(dim("  Encontre em: painel Z-API > Parceiros > Token de autorizacao."));
-    p.log.message(dim("  Configure com: menu → Partner Token"));
+    p.log.warn("Listar instancias e exclusivo para contas parceiras Z-API.");
+    p.log.message(dim("  Contas parceiras gerenciam multiplas instancias de clientes."));
+    p.log.message(dim("  Se voce tem apenas sua propria instancia, ignore esta opcao."));
+    p.log.message(dim("  Para contas parceiras: painel Z-API > Parceiros > Token de autorizacao."));
     await continuePrompt();
     return mainMenu();
   }
@@ -556,7 +556,7 @@ async function mainMenu(): Promise<void> {
   if (isConfigured) {
     options.push(
       { value: "test", label: `${chalk.green("⚡")} Testar conexao`, hint: "verifica status da instancia" },
-      { value: "instances", label: `${chalk.cyan("☰")} Listar instancias`, hint: "requer acesso de parceiro" },
+      { value: "instances", label: `${chalk.cyan("☰")} Listar instancias`, hint: "apenas contas parceiras Z-API" },
       { value: "send", label: `${chalk.green("✉")} Enviar mensagem`, hint: "envio rapido de texto" },
     );
   }
