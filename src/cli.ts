@@ -14,6 +14,9 @@ import { registerWebhookCommands } from "./commands/webhook.js";
 import {
   registerNewsletterCommands,
   registerBusinessCommands,
+  registerLabelCommands,
+  registerCollectionCommands,
+  registerBusinessProfileCommands,
   registerStatusCommands,
   registerCommunityCommands,
   registerQueueCommands,
@@ -21,6 +24,8 @@ import {
   registerPartnerCommands,
   registerCallsCommands,
 } from "./commands/extras.js";
+import { registerInstallSkillsCommand } from "./commands/install-skills.js";
+import { registerSearchDocsCommand } from "./commands/search-docs.js";
 import { startInteractive, runSetupWizard, loadConfig } from "./interactive.js";
 
 const accent = chalk.hex("#98de62");
@@ -75,7 +80,7 @@ function bootCommander(): void {
   program
     .name("zapi")
     .description("CLI tool for Z-API WhatsApp API")
-    .version("1.0.0")
+    .version("1.1.0")
     .addHelpText("beforeAll", chalk.bold.hex("#98de62")("\n  Z-API CLI") + chalk.gray(" — WhatsApp API from the terminal\n"));
 
   program.command("setup").description("Run interactive setup wizard").action(async () => {
@@ -91,7 +96,7 @@ function bootCommander(): void {
     updateFromMain();
   });
 
-  // Register all command groups
+  // Core commands
   registerInstanceCommands(program);
   registerSendCommands(program);
   registerMessageCommands(program);
@@ -99,14 +104,23 @@ function bootCommander(): void {
   registerGroupCommands(program);
   registerContactCommands(program);
   registerWebhookCommands(program);
+
+  // Extended commands
   registerNewsletterCommands(program);
   registerBusinessCommands(program);
+  registerLabelCommands(program);
+  registerCollectionCommands(program);
+  registerBusinessProfileCommands(program);
   registerStatusCommands(program);
   registerCommunityCommands(program);
   registerQueueCommands(program);
   registerPrivacyCommands(program);
   registerPartnerCommands(program);
   registerCallsCommands(program);
+
+  // Developer tools
+  registerInstallSkillsCommand(program);
+  registerSearchDocsCommand(program);
 
   program.parse();
 }

@@ -30,25 +30,43 @@ export function registerInstanceCommands(program: Command): void {
     printResponse(await client.get("/device"), "Device Data");
   });
 
-  cmd.command("qr-code").description("Get QR code for connection").action(async () => {
+  cmd.command("qr-code").description("Get QR code bytes for connection").action(async () => {
     const client = new ZapiClient();
     printResponse(await client.get("/qr-code"), "QR Code");
   });
+
+  cmd.command("qr-code-image").description("Get QR code as image URL").action(async () => {
+    const client = new ZapiClient();
+    printResponse(await client.get("/qr-code/image"), "QR Code Image");
+  });
+
+  cmd.command("qr-code-phone").description("Get QR code for phone number pairing").action(async () => {
+    const client = new ZapiClient();
+    printResponse(await client.get("/qr-code/phone"), "QR Code Phone");
+  });
+
+  cmd.command("profile-name")
+    .description("Update profile display name")
+    .requiredOption("--value <name>", "New profile name")
+    .action(async (opts) => {
+      const client = new ZapiClient();
+      printResponse(await client.put("/profile-name", { value: opts.value }), "Update Profile Name");
+    });
 
   cmd.command("profile-picture")
     .description("Update profile picture")
     .requiredOption("--value <url>", "Image URL or base64")
     .action(async (opts) => {
       const client = new ZapiClient();
-      printResponse(await client.post("/profile-picture", { value: opts.value }), "Update Profile Picture");
+      printResponse(await client.put("/profile-picture", { value: opts.value }), "Update Profile Picture");
     });
 
-  cmd.command("profile-name")
-    .description("Update profile name")
-    .requiredOption("--value <name>", "New profile name")
+  cmd.command("profile-description")
+    .description("Update profile description/bio")
+    .requiredOption("--value <text>", "New description")
     .action(async (opts) => {
       const client = new ZapiClient();
-      printResponse(await client.post("/profile-name", { value: opts.value }), "Update Profile Name");
+      printResponse(await client.put("/profile-description", { value: opts.value }), "Update Profile Description");
     });
 
   cmd.command("auto-read")
@@ -57,7 +75,7 @@ export function registerInstanceCommands(program: Command): void {
     .action(async (opts) => {
       const client = new ZapiClient();
       printResponse(
-        await client.post("/update-auto-read-message", { value: opts.value === "true" }),
+        await client.put("/update-auto-read-message", { value: opts.value === "true" }),
         "Auto-Read Messages",
       );
     });
@@ -68,7 +86,7 @@ export function registerInstanceCommands(program: Command): void {
     .action(async (opts) => {
       const client = new ZapiClient();
       printResponse(
-        await client.post("/update-call-reject-auto", { value: opts.value === "true" }),
+        await client.put("/update-call-reject-auto", { value: opts.value === "true" }),
         "Reject Calls",
       );
     });
@@ -79,7 +97,7 @@ export function registerInstanceCommands(program: Command): void {
     .action(async (opts) => {
       const client = new ZapiClient();
       printResponse(
-        await client.post("/update-call-reject-message", { value: opts.value }),
+        await client.put("/update-call-reject-message", { value: opts.value }),
         "Call Reject Message",
       );
     });
