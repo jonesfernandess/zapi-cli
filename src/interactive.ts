@@ -540,7 +540,7 @@ async function mainMenu(): Promise<void> {
     { value: "setup", label: `${accent("⚙")} Setup wizard`, hint: isConfigured ? "reconfigurar" : "configurar agora" },
     { value: "instance-id", label: "Instance ID" },
     { value: "token", label: "Token" },
-    { value: "security-token", label: "Security Token", hint: "Client-Token da instancia" },
+    { value: "security-token", label: "Security Token" },
     { value: "exit", label: `${chalk.red("✕")} Sair` },
   );
 
