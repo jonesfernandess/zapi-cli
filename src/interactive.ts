@@ -367,18 +367,44 @@ async function handleListInstances(config: ZapiConfig): Promise<void> {
     console.log("");
     for (const inst of instances) {
       const i = inst as Record<string, unknown>;
-      const connected = i["connected"] === true;
+      const connected = i["connected"] === true || i["status"] === "connected";
       const statusIcon = connected ? chalk.green("●") : chalk.red("●");
       const statusText = connected ? chalk.green("connected") : chalk.red("disconnected");
 
-      const name = (i["name"] as string) || (i["profileName"] as string) || "—";
-      const id = (i["id"] as string) || (i["instanceId"] as string) || "";
-      const phone = (i["phone"] as string) || (i["number"] as string) || "";
-      const tokenStr = (i["token"] as string) || "";
-      const tokenDisplay = tokenStr ? tokenStr.slice(0, 8) + "..." + tokenStr.slice(-4) : "—";
+      const name =
+        (i["name"] as string) ||
+        (i["profileName"] as string) ||
+        (i["instanceName"] as string) ||
+        "—";
+      const id =
+        (i["id"] as string) ||
+        (i["instanceId"] as string) ||
+        (i["instance"] as string) ||
+        "";
+      const phone =
+        (i["phone"] as string) ||
+        (i["number"] as string) ||
+        (i["phoneNumber"] as string) ||
+        "";
+      const tokenStr =
+        (i["token"] as string) ||
+        (i["instanceToken"] as string) ||
+        (i["accessToken"] as string) ||
+        "";
+      const tokenDisplay = tokenStr ? tokenStr.slice(0, 6) + "..." + tokenStr.slice(-4) : "—";
 
       console.log(`  ${statusIcon} ${chalk.bold.white(name)} ${dim(`(${id})`)}`);
       console.log(`    ${dim("Status:")} ${statusText}  ${dim("Numero:")} ${phone || "—"}  ${dim("Token:")} ${accent(tokenDisplay)}`);
+
+      // Show raw keys when fields are empty (helps diagnose unknown response shape)
+      const knownKeys = ["connected","status","name","profileName","instanceName","id","instanceId","instance","phone","number","phoneNumber","token","instanceToken","accessToken"];
+      const unknownFields = Object.entries(i).filter(([k]) => !knownKeys.includes(k));
+      if (!name || name === "—") {
+        console.log(chalk.dim(`    raw: ${JSON.stringify(i).slice(0, 200)}`));
+      } else if (unknownFields.length > 0) {
+        const extra = unknownFields.map(([k, v]) => `${k}: ${String(v).slice(0, 30)}`).join("  ");
+        console.log(chalk.dim(`    ${extra}`));
+      }
       console.log("");
     }
   } catch (err) {
