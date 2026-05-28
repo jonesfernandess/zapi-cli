@@ -150,7 +150,7 @@ async function runSetupWizard(config: ZapiConfig): Promise<void> {
 
   // Step 3: Security Token (Client-Token)
   console.log("");
-  p.log.step(accent("Passo 3/4") + dim(" — Security Token (Client-Token)"));
+  p.log.step(accent("Passo 3/3") + dim(" — Security Token (Client-Token)"));
   p.log.message(dim("Exigido pela maioria das instancias. Encontre em 'Seguranca' no painel Z-API."));
   p.log.message(dim("Sem ele voce recebera: HTTP 400 'your client-token is not configured'."));
 
@@ -169,30 +169,6 @@ async function runSetupWizard(config: ZapiConfig): Promise<void> {
       config.securityToken = (securityToken as string).trim();
       saveConfig(config);
       p.log.success("Security token salvo!");
-    }
-  }
-
-  // Step 4: Partner Token (optional)
-  console.log("");
-  p.log.step(accent("Passo 4/4") + dim(" — Partner Token (opcional)"));
-  p.log.message(dim("Necessario apenas para contas parceiras (listar/criar instancias)."));
-  p.log.message(dim("Encontre no painel Z-API em 'Parceiros' > 'Token de autorizacao'."));
-
-  const wantPartner = await p.confirm({
-    message: "Deseja configurar o partner token?",
-    initialValue: Boolean(config.partnerToken),
-  });
-
-  if (!p.isCancel(wantPartner) && wantPartner) {
-    const partnerToken = await p.text({
-      message: "Partner token (Authorization Bearer)",
-      placeholder: "Cole o partner token aqui",
-      initialValue: config.partnerToken || "",
-    });
-    if (!p.isCancel(partnerToken)) {
-      config.partnerToken = (partnerToken as string).trim();
-      saveConfig(config);
-      p.log.success("Partner token salvo!");
     }
   }
 
@@ -556,7 +532,6 @@ async function mainMenu(): Promise<void> {
   if (isConfigured) {
     options.push(
       { value: "test", label: `${chalk.green("⚡")} Testar conexao`, hint: "verifica status da instancia" },
-      { value: "instances", label: `${chalk.cyan("☰")} Listar instancias`, hint: "apenas contas parceiras Z-API" },
       { value: "send", label: `${chalk.green("✉")} Enviar mensagem`, hint: "envio rapido de texto" },
     );
   }
@@ -565,8 +540,7 @@ async function mainMenu(): Promise<void> {
     { value: "setup", label: `${accent("⚙")} Setup wizard`, hint: isConfigured ? "reconfigurar" : "configurar agora" },
     { value: "instance-id", label: "Instance ID" },
     { value: "token", label: "Token" },
-    { value: "security-token", label: "Security Token", hint: "Client-Token para instancia" },
-    { value: "partner-token", label: "Partner Token", hint: "Bearer token para API de parceiro" },
+    { value: "security-token", label: "Security Token", hint: "Client-Token da instancia" },
     { value: "exit", label: `${chalk.red("✕")} Sair` },
   );
 
@@ -583,8 +557,6 @@ async function mainMenu(): Promise<void> {
   switch (action) {
     case "test":
       return handleTestConnection(config);
-    case "instances":
-      return handleListInstances(config);
     case "send":
       return handleQuickSend(config);
     case "setup":
@@ -595,8 +567,6 @@ async function mainMenu(): Promise<void> {
       return handleToken(config);
     case "security-token":
       return handleSecurityToken(config);
-    case "partner-token":
-      return handlePartnerToken(config);
   }
 }
 
