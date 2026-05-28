@@ -12,12 +12,12 @@ export function registerInstanceCommands(program: Command): void {
 
   cmd.command("restart").description("Restart instance").action(async () => {
     const client = new ZapiClient();
-    printResponse(await client.post("/restart"), "Restart");
+    printResponse(await client.get("/restart"), "Restart");
   });
 
   cmd.command("disconnect").description("Disconnect from WhatsApp").action(async () => {
     const client = new ZapiClient();
-    printResponse(await client.post("/disconnect"), "Disconnect");
+    printResponse(await client.get("/disconnect"), "Disconnect");
   });
 
   cmd.command("me").description("Get instance info/data").action(async () => {
