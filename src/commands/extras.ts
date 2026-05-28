@@ -653,32 +653,48 @@ export function registerPartnerCommands(program: Command): void {
   const cmd = program.command("partner").description("Partner/admin instance management");
 
   cmd.command("create-instance")
-    .description("Create a new instance")
+    .description("Create a new instance (partner only)")
     .requiredOption("--name <name>", "Instance name")
     .action(async (opts) => {
       const client = new ZapiClient();
-      printResponse(await client.post("/create-instance", { name: opts.name }), "Create Instance");
+      printResponse(
+        await client.post("https://api.z-api.io/instances/integrator/on-demand", { name: opts.name }),
+        "Create Instance",
+      );
     });
 
-  cmd.command("list-instances").description("List all instances").action(async () => {
-    const client = new ZapiClient();
-    printResponse(await client.get("/list-instances"), "List Instances");
-  });
+  cmd.command("list-instances")
+    .description("List all instances (partner only)")
+    .option("--page <n>", "Page number", "1")
+    .option("--page-size <n>", "Results per page", "50")
+    .action(async (opts) => {
+      const client = new ZapiClient();
+      printResponse(
+        await client.get(`https://api.z-api.io/instances?page=${opts.page}&pageSize=${opts.pageSize}`),
+        "List Instances",
+      );
+    });
 
   cmd.command("sign-instance")
-    .description("Sign/activate an instance")
+    .description("Sign/activate an instance (partner only)")
     .requiredOption("--instance-id <id>", "Instance ID")
     .action(async (opts) => {
       const client = new ZapiClient();
-      printResponse(await client.post("/sign-instance", { instanceId: opts.instanceId }), "Sign Instance");
+      printResponse(
+        await client.post("/integrator/on-demand/subscription", { instanceId: opts.instanceId }),
+        "Sign Instance",
+      );
     });
 
   cmd.command("cancel-instance")
-    .description("Cancel/delete an instance")
+    .description("Cancel/delete an instance (partner only)")
     .requiredOption("--instance-id <id>", "Instance ID")
     .action(async (opts) => {
       const client = new ZapiClient();
-      printResponse(await client.delete(`/cancel-instance/${opts.instanceId}`), "Cancel Instance");
+      printResponse(
+        await client.post("/integrator/on-demand/cancel", { instanceId: opts.instanceId }),
+        "Cancel Instance",
+      );
     });
 }
 

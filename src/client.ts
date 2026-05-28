@@ -23,6 +23,7 @@ export class ZapiClient {
   }
 
   private url(path: string): string {
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
     const cleanPath = path.startsWith("/") ? path : `/${path}`;
     return `${this.baseUrl}${cleanPath}`;
   }

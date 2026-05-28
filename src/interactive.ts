@@ -340,7 +340,7 @@ async function handleListInstances(config: ZapiConfig): Promise<void> {
   s.start("Buscando instancias...");
 
   try {
-    const resp = await fetch("https://api.z-api.io/instances/list", {
+    const resp = await fetch("https://api.z-api.io/instances?page=1&pageSize=50", {
       headers: {
         Accept: "application/json",
         "Client-Token": config.securityToken,
