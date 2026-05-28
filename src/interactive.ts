@@ -193,6 +193,15 @@ async function runSetupWizard(config: ZapiConfig): Promise<void> {
   p.outro(dim("Ate mais!"));
 }
 
+// ── Helpers ──
+
+async function continuePrompt(): Promise<void> {
+  await p.select({
+    message: chalk.dim("Pressione Enter para voltar ao menu"),
+    options: [{ value: "ok", label: "↩  Voltar" }],
+  });
+}
+
 // ── Menu Handlers ──
 
 async function handleInstanceId(config: ZapiConfig): Promise<void> {
@@ -245,6 +254,7 @@ async function handleSecurityToken(config: ZapiConfig): Promise<void> {
 async function handleTestConnection(config: ZapiConfig): Promise<void> {
   if (!config.instanceId || !config.token) {
     p.log.error("Configure o Instance ID e o token primeiro.");
+    await continuePrompt();
     return mainMenu();
   }
 
@@ -254,16 +264,17 @@ async function handleTestConnection(config: ZapiConfig): Promise<void> {
   try {
     const baseUrl = getBaseUrl(config);
     const headers: Record<string, string> = {
+      "Content-Type": "application/json",
       Accept: "application/json",
     };
     if (config.securityToken) {
       headers["Client-Token"] = config.securityToken;
     }
 
-    const resp = await fetch(`${baseUrl}/status`, {
-      headers,
-    });
-    const data = await resp.json() as Record<string, unknown>;
+    const resp = await fetch(`${baseUrl}/status`, { headers });
+    const text = await resp.text();
+    let data: Record<string, unknown> = {};
+    try { data = JSON.parse(text) as Record<string, unknown>; } catch { /* not JSON */ }
 
     if (resp.ok) {
       const connected = data["connected"] === true;
@@ -271,46 +282,57 @@ async function handleTestConnection(config: ZapiConfig): Promise<void> {
       const session = (data["session"] as string) || "";
       const phone = (data["phone"] as string) || (data["number"] as string) || "";
 
+      s.stop(connected ? chalk.green("Conectado!") : chalk.yellow("Desconectado"));
+
       if (connected) {
-        s.stop(chalk.green("Conectado!"));
+        p.log.success(`Status: ${accent("connected")}`);
       } else {
-        s.stop(chalk.yellow("Desconectado"));
+        p.log.warn("Status: desconectado — escaneie o QR code para conectar");
+        p.log.message(dim("  Use: zapi instance qr-code"));
       }
 
-      p.log.success(`Status: ${connected ? accent("connected") : chalk.yellow("disconnected")}`);
       if (smartphoneConnected) {
         p.log.message(`Smartphone: ${chalk.green("conectado")}`);
       } else {
         p.log.message(`Smartphone: ${chalk.yellow("desconectado")}`);
       }
-      if (session) p.log.message(`Sessao: ${chalk.white(session)}`);
-      if (phone) p.log.message(`Numero: ${chalk.white(phone)}`);
+      if (session) p.log.message(`Sessao:  ${chalk.white(session)}`);
+      if (phone)   p.log.message(`Numero:  ${chalk.white(phone)}`);
 
-      // Show webhook status if available
       const webhookStatus = data["webhookStatus"] as Record<string, unknown> | undefined;
       if (webhookStatus) {
         const webhookUrl = (webhookStatus["url"] as string) || "";
-        if (webhookUrl) {
-          p.log.message(`Webhook: ${chalk.white(webhookUrl)}`);
-        }
+        if (webhookUrl) p.log.message(`Webhook: ${chalk.white(webhookUrl)}`);
+      }
+
+      if (!connected) {
+        p.log.message("");
+        p.log.warn(chalk.bold("Instancia desconectada = mensagens nao serao enviadas"));
       }
     } else {
       s.stop(chalk.red("Erro na conexao"));
-      p.log.error(`HTTP ${resp.status}: ${JSON.stringify(data)}`);
+      p.log.error(`HTTP ${resp.status}`);
+      p.log.error(text.slice(0, 300));
+      if (resp.status === 401 || resp.status === 403) {
+        p.log.message(dim("  Verifique se o Instance ID e o Token estao corretos."));
+      }
     }
   } catch (err) {
     s.stop(chalk.red("Falha na conexao"));
     p.log.error(String(err));
+    p.log.message(dim("  Verifique sua conexao com a internet."));
   }
 
+  await continuePrompt();
   return mainMenu();
 }
 
 async function handleListInstances(config: ZapiConfig): Promise<void> {
   if (!config.securityToken) {
     p.log.warn("Para listar instancias, voce precisa de acesso de parceiro Z-API.");
-    p.log.message(dim("Configure o Security Token com permissoes de parceiro."));
-    p.log.message(dim("Consulte: https://developer.z-api.io/partner"));
+    p.log.message(dim("  Configure o Security Token com permissoes de parceiro."));
+    p.log.message(dim("  Consulte: https://developer.z-api.io/partner"));
+    await continuePrompt();
     return mainMenu();
   }
 
@@ -324,16 +346,22 @@ async function handleListInstances(config: ZapiConfig): Promise<void> {
         "Client-Token": config.securityToken,
       },
     });
-    const data = await resp.json();
+    const text = await resp.text();
+    let data: unknown;
+    try { data = JSON.parse(text); } catch { data = text; }
 
     if (!resp.ok) {
       s.stop(chalk.red("Erro ao listar"));
-      p.log.error(`HTTP ${resp.status}: ${JSON.stringify(data)}`);
-      p.log.message(dim("Verifique se o Security Token tem permissoes de parceiro."));
+      p.log.error(`HTTP ${resp.status}`);
+      p.log.error(typeof data === "string" ? data.slice(0, 300) : JSON.stringify(data));
+      p.log.message(dim("  Verifique se o Security Token tem permissoes de parceiro."));
+      await continuePrompt();
       return mainMenu();
     }
 
-    const instances = Array.isArray(data) ? data : (data as Record<string, unknown>)["instances"] as unknown[] || [data];
+    const instances = Array.isArray(data)
+      ? data
+      : ((data as Record<string, unknown>)["instances"] as unknown[]) || [data];
     s.stop(chalk.green(`${instances.length} instancia(s) encontrada(s)`));
 
     console.log("");
@@ -358,6 +386,7 @@ async function handleListInstances(config: ZapiConfig): Promise<void> {
     p.log.error(String(err));
   }
 
+  await continuePrompt();
   return mainMenu();
 }
 
@@ -410,18 +439,34 @@ async function handleQuickSend(config: ZapiConfig): Promise<void> {
       }),
     });
 
-    if (resp.ok) {
+    const text = await resp.text();
+    let data: unknown;
+    try { data = JSON.parse(text); } catch { data = text; }
+
+    const valueFalse =
+      data !== null && typeof data === "object" &&
+      (data as Record<string, unknown>)["value"] === false;
+
+    if (resp.ok && !valueFalse) {
       s.stop(chalk.green("Mensagem enviada!"));
+      p.log.success(typeof data === "object" ? JSON.stringify(data) : String(data));
     } else {
-      const data = await resp.json();
-      s.stop(chalk.red("Erro ao enviar"));
-      p.log.error(JSON.stringify(data));
+      s.stop(chalk.red("Falha ao enviar"));
+      if (valueFalse) {
+        p.log.error("A instancia retornou value: false");
+        p.log.message(dim("  Verifique se a instancia esta conectada: zapi instance status"));
+      } else {
+        p.log.error(`HTTP ${resp.status}`);
+        p.log.error(typeof data === "string" ? data.slice(0, 300) : JSON.stringify(data));
+      }
     }
   } catch (err) {
     s.stop(chalk.red("Falha no envio"));
     p.log.error(String(err));
+    p.log.message(dim("  Verifique sua conexao com a internet."));
   }
 
+  await continuePrompt();
   return mainMenu();
 }
 
