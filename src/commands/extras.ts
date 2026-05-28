@@ -650,13 +650,13 @@ export function registerPrivacyCommands(program: Command): void {
 }
 
 export function registerPartnerCommands(program: Command): void {
-  const cmd = program.command("partner").description("Partner/admin instance management");
+  const cmd = program.command("partner").description("Partner/admin instance management (requires ZAPI_PARTNER_TOKEN)");
 
   cmd.command("create-instance")
     .description("Create a new instance (partner only)")
     .requiredOption("--name <name>", "Instance name")
     .action(async (opts) => {
-      const client = new ZapiClient();
+      const client = ZapiClient.partner();
       printResponse(
         await client.post("https://api.z-api.io/instances/integrator/on-demand", { name: opts.name }),
         "Create Instance",
@@ -668,7 +668,7 @@ export function registerPartnerCommands(program: Command): void {
     .option("--page <n>", "Page number", "1")
     .option("--page-size <n>", "Results per page", "50")
     .action(async (opts) => {
-      const client = new ZapiClient();
+      const client = ZapiClient.partner();
       printResponse(
         await client.get(`https://api.z-api.io/instances?page=${opts.page}&pageSize=${opts.pageSize}`),
         "List Instances",
@@ -679,7 +679,7 @@ export function registerPartnerCommands(program: Command): void {
     .description("Sign/activate an instance (partner only)")
     .requiredOption("--instance-id <id>", "Instance ID")
     .action(async (opts) => {
-      const client = new ZapiClient();
+      const client = ZapiClient.partner();
       printResponse(
         await client.post("/integrator/on-demand/subscription", { instanceId: opts.instanceId }),
         "Sign Instance",
@@ -690,7 +690,7 @@ export function registerPartnerCommands(program: Command): void {
     .description("Cancel/delete an instance (partner only)")
     .requiredOption("--instance-id <id>", "Instance ID")
     .action(async (opts) => {
-      const client = new ZapiClient();
+      const client = ZapiClient.partner();
       printResponse(
         await client.post("/integrator/on-demand/cancel", { instanceId: opts.instanceId }),
         "Cancel Instance",

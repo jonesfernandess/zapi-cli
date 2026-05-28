@@ -1,4 +1,4 @@
-import { getBaseUrl, getSecurityToken } from "./config.js";
+import { getBaseUrl, getSecurityToken, getPartnerToken } from "./config.js";
 import chalk from "chalk";
 
 export interface ApiResponse {
@@ -20,6 +20,19 @@ export class ZapiClient {
       Accept: "application/json",
       ...(securityToken ? { "Client-Token": securityToken } : {}),
     };
+  }
+
+  /** Creates a client that uses Bearer token auth (for partner endpoints). */
+  static partner(): ZapiClient {
+    const client = Object.create(ZapiClient.prototype) as ZapiClient;
+    client.baseUrl = "https://api.z-api.io";
+    const partnerToken = getPartnerToken();
+    client.headers = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(partnerToken ? { Authorization: `Bearer ${partnerToken}` } : {}),
+    };
+    return client;
   }
 
   private url(path: string): string {

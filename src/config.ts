@@ -11,6 +11,7 @@ export interface ZapiConfig {
   instanceId: string;
   token: string;
   securityToken: string;
+  partnerToken: string;
 }
 
 // Load .env from: CWD -> project root -> ~/.zapi-cli/
@@ -40,6 +41,9 @@ function loadFromConfigJson(): void {
     }
     if (data.securityToken && !process.env["ZAPI_SECURITY_TOKEN"]) {
       process.env["ZAPI_SECURITY_TOKEN"] = data.securityToken;
+    }
+    if (data.partnerToken && !process.env["ZAPI_PARTNER_TOKEN"]) {
+      process.env["ZAPI_PARTNER_TOKEN"] = data.partnerToken;
     }
   } catch {
     // ignore
@@ -74,6 +78,10 @@ export function getSecurityToken(): string | undefined {
   return process.env["ZAPI_SECURITY_TOKEN"] || undefined;
 }
 
+export function getPartnerToken(): string | undefined {
+  return process.env["ZAPI_PARTNER_TOKEN"] || undefined;
+}
+
 export function getBaseUrl(): string {
   const instanceId = getInstanceId();
   const token = getToken();
@@ -92,6 +100,7 @@ export function loadConfig(): ZapiConfig {
     instanceId: process.env["ZAPI_INSTANCE_ID"] || "",
     token: process.env["ZAPI_TOKEN"] || "",
     securityToken: process.env["ZAPI_SECURITY_TOKEN"] || "",
+    partnerToken: process.env["ZAPI_PARTNER_TOKEN"] || "",
   };
 }
 
@@ -103,10 +112,12 @@ export function saveConfig(cfg: ZapiConfig): void {
 }
 
 export function generateEnvFile(cfg: ZapiConfig): string {
-  return [
+  const lines = [
     `ZAPI_INSTANCE_ID=${cfg.instanceId}`,
     `ZAPI_TOKEN=${cfg.token}`,
     `ZAPI_SECURITY_TOKEN=${cfg.securityToken}`,
-    "",
-  ].join("\n");
+  ];
+  if (cfg.partnerToken) lines.push(`ZAPI_PARTNER_TOKEN=${cfg.partnerToken}`);
+  lines.push("");
+  return lines.join("\n");
 }

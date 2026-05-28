@@ -16,12 +16,14 @@ export interface ZapiConfig {
   instanceId: string;
   token: string;
   securityToken: string;
+  partnerToken: string;
 }
 
 const DEFAULTS: ZapiConfig = {
   instanceId: "",
   token: "",
   securityToken: "",
+  partnerToken: "",
 };
 
 export function loadConfig(): ZapiConfig {
@@ -46,6 +48,7 @@ function generateEnvFile(config: ZapiConfig): void {
     `ZAPI_TOKEN=${config.token}`,
   ];
   if (config.securityToken) lines.push(`ZAPI_SECURITY_TOKEN=${config.securityToken}`);
+  if (config.partnerToken)  lines.push(`ZAPI_PARTNER_TOKEN=${config.partnerToken}`);
   writeFileSync(ENV_FILE, lines.join("\n") + "\n");
 }
 
@@ -145,20 +148,20 @@ async function runSetupWizard(config: ZapiConfig): Promise<void> {
   saveConfig(config);
   p.log.success("Token salvo!");
 
-  // Step 3: Security Token (optional)
+  // Step 3: Security Token (Client-Token)
   console.log("");
-  p.log.step(accent("Passo 3/3") + dim(" — Security Token (opcional)"));
-  p.log.message(dim("Token de seguranca do cliente para validacao de webhooks."));
-  p.log.message(dim("Encontre em 'Seguranca' no painel da Z-API."));
+  p.log.step(accent("Passo 3/4") + dim(" — Security Token (Client-Token)"));
+  p.log.message(dim("Exigido pela maioria das instancias. Encontre em 'Seguranca' no painel Z-API."));
+  p.log.message(dim("Sem ele voce recebera: HTTP 400 'your client-token is not configured'."));
 
   const wantSecurity = await p.confirm({
     message: "Deseja configurar o security token?",
-    initialValue: false,
+    initialValue: Boolean(config.securityToken),
   });
 
   if (!p.isCancel(wantSecurity) && wantSecurity) {
     const securityToken = await p.text({
-      message: "Security token",
+      message: "Security token (Client-Token)",
       placeholder: "Cole o security token aqui",
       initialValue: config.securityToken || "",
     });
@@ -166,6 +169,30 @@ async function runSetupWizard(config: ZapiConfig): Promise<void> {
       config.securityToken = (securityToken as string).trim();
       saveConfig(config);
       p.log.success("Security token salvo!");
+    }
+  }
+
+  // Step 4: Partner Token (optional)
+  console.log("");
+  p.log.step(accent("Passo 4/4") + dim(" — Partner Token (opcional)"));
+  p.log.message(dim("Necessario apenas para contas parceiras (listar/criar instancias)."));
+  p.log.message(dim("Encontre no painel Z-API em 'Parceiros' > 'Token de autorizacao'."));
+
+  const wantPartner = await p.confirm({
+    message: "Deseja configurar o partner token?",
+    initialValue: Boolean(config.partnerToken),
+  });
+
+  if (!p.isCancel(wantPartner) && wantPartner) {
+    const partnerToken = await p.text({
+      message: "Partner token (Authorization Bearer)",
+      placeholder: "Cole o partner token aqui",
+      initialValue: config.partnerToken || "",
+    });
+    if (!p.isCancel(partnerToken)) {
+      config.partnerToken = (partnerToken as string).trim();
+      saveConfig(config);
+      p.log.success("Partner token salvo!");
     }
   }
 
@@ -240,7 +267,7 @@ async function handleToken(config: ZapiConfig): Promise<void> {
 
 async function handleSecurityToken(config: ZapiConfig): Promise<void> {
   const securityToken = await p.text({
-    message: "Security token",
+    message: "Security token (Client-Token da instancia)",
     placeholder: "Cole o security token (vazio para remover)",
     initialValue: config.securityToken || "",
   });
@@ -248,6 +275,22 @@ async function handleSecurityToken(config: ZapiConfig): Promise<void> {
   config.securityToken = (securityToken as string).trim();
   saveConfig(config);
   p.log.success(config.securityToken ? "Security token atualizado!" : "Security token removido!");
+  return mainMenu();
+}
+
+async function handlePartnerToken(config: ZapiConfig): Promise<void> {
+  p.log.message(dim("  Token de autorizacao para a API de parceiros Z-API (Bearer)."));
+  p.log.message(dim("  Encontre em: painel Z-API > Parceiros > Token de autorizacao."));
+  p.log.message(dim("  Diferente do Security Token da instancia."));
+  const partnerToken = await p.text({
+    message: "Partner token (Authorization Bearer)",
+    placeholder: "Cole o partner token (vazio para remover)",
+    initialValue: config.partnerToken || "",
+  });
+  if (p.isCancel(partnerToken)) return mainMenu();
+  config.partnerToken = (partnerToken as string).trim();
+  saveConfig(config);
+  p.log.success(config.partnerToken ? "Partner token atualizado!" : "Partner token removido!");
   return mainMenu();
 }
 
@@ -328,10 +371,11 @@ async function handleTestConnection(config: ZapiConfig): Promise<void> {
 }
 
 async function handleListInstances(config: ZapiConfig): Promise<void> {
-  if (!config.securityToken) {
-    p.log.warn("Para listar instancias, voce precisa de acesso de parceiro Z-API.");
-    p.log.message(dim("  Configure o Security Token com permissoes de parceiro."));
-    p.log.message(dim("  Consulte: https://developer.z-api.io/partner"));
+  if (!config.partnerToken) {
+    p.log.warn("Para listar instancias, voce precisa de um Partner Token.");
+    p.log.message(dim("  Este e diferente do Security Token da instancia."));
+    p.log.message(dim("  Encontre em: painel Z-API > Parceiros > Token de autorizacao."));
+    p.log.message(dim("  Configure com: menu → Partner Token"));
     await continuePrompt();
     return mainMenu();
   }
@@ -343,7 +387,7 @@ async function handleListInstances(config: ZapiConfig): Promise<void> {
     const resp = await fetch("https://api.z-api.io/instances?page=1&pageSize=50", {
       headers: {
         Accept: "application/json",
-        "Client-Token": config.securityToken,
+        Authorization: `Bearer ${config.partnerToken}`,
       },
     });
     const text = await resp.text();
@@ -521,7 +565,8 @@ async function mainMenu(): Promise<void> {
     { value: "setup", label: `${accent("⚙")} Setup wizard`, hint: isConfigured ? "reconfigurar" : "configurar agora" },
     { value: "instance-id", label: "Instance ID" },
     { value: "token", label: "Token" },
-    { value: "security-token", label: "Security Token" },
+    { value: "security-token", label: "Security Token", hint: "Client-Token para instancia" },
+    { value: "partner-token", label: "Partner Token", hint: "Bearer token para API de parceiro" },
     { value: "exit", label: `${chalk.red("✕")} Sair` },
   );
 
@@ -550,6 +595,8 @@ async function mainMenu(): Promise<void> {
       return handleToken(config);
     case "security-token":
       return handleSecurityToken(config);
+    case "partner-token":
+      return handlePartnerToken(config);
   }
 }
 
