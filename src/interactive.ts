@@ -5,6 +5,7 @@ import gradient from "gradient-string";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import { TOOLS, type Tool, installForTool, isToolInstalled } from "./commands/install-skills.js";
 
 // ── Config ──
 
@@ -516,6 +517,64 @@ async function handleQuickSend(config: ZapiConfig): Promise<void> {
   return mainMenu();
 }
 
+// ── Install Skills ──
+
+async function handleInstallSkills(): Promise<void> {
+  console.log("");
+  p.log.message(chalk.dim("Instala os docs da Z-API no seu editor/agente de IA."));
+  console.log("");
+
+  const scope = await p.select({
+    message: "Onde instalar as skills?",
+    options: [
+      { value: "global", label: `${chalk.cyan("◉")} Globalmente ${chalk.dim("(recomendado)")}`, hint: "~/ — disponível em qualquer projeto" },
+      { value: "local",  label: `${chalk.yellow("◎")} Neste diretório`, hint: process.cwd() },
+    ],
+  });
+  if (p.isCancel(scope)) return mainMenu();
+  const isGlobal = scope === "global";
+
+  console.log("");
+  p.log.message(chalk.dim("  Espaço → marcar/desmarcar   Enter → confirmar seleção"));
+  console.log("");
+
+  const toolOptions = (Object.entries(TOOLS) as [Tool, string][]).map(([value, label]) => {
+    const installed = isToolInstalled(value, isGlobal);
+    return {
+      value,
+      label: installed ? `${label} ${chalk.green("✓")}` : label,
+      hint: installed ? "já instalado" : undefined,
+    };
+  });
+
+  const selected = await p.multiselect<Tool>({
+    message: "Selecione as ferramentas:",
+    options: toolOptions,
+    required: true,
+  });
+  if (p.isCancel(selected)) return mainMenu();
+
+  console.log("");
+  for (const target of selected as Tool[]) {
+    p.log.step(`Instalando para ${chalk.cyan(TOOLS[target])}...`);
+    try {
+      installForTool(target, isGlobal);
+    } catch (err: unknown) {
+      p.log.error(`Falha: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    console.log("");
+  }
+
+  p.log.success(
+    isGlobal
+      ? "Pronto! Skills instaladas globalmente (~/)."
+      : "Pronto! Skills instaladas no diretório atual.",
+  );
+  console.log("");
+  await continuePrompt();
+  return mainMenu();
+}
+
 // ── Main Menu ──
 
 async function mainMenu(): Promise<void> {
@@ -537,6 +596,7 @@ async function mainMenu(): Promise<void> {
   }
 
   options.push(
+    { value: "install-skills", label: `${chalk.yellow("◈")} Instalar skills de IA`, hint: "Claude, Cursor, Copilot, Windsurf..." },
     { value: "setup", label: `${accent("⚙")} Setup wizard`, hint: isConfigured ? "reconfigurar" : "configurar agora" },
     { value: "instance-id", label: "Instance ID" },
     { value: "token", label: "Token" },
@@ -559,6 +619,8 @@ async function mainMenu(): Promise<void> {
       return handleTestConnection(config);
     case "send":
       return handleQuickSend(config);
+    case "install-skills":
+      return handleInstallSkills();
     case "setup":
       return runSetupWizard(config);
     case "instance-id":
