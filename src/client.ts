@@ -1,4 +1,5 @@
-import { getBaseUrl, getSecurityToken } from "./config.js";
+import { getBaseUrl, getSecurityToken, getPartnerToken } from "./config.js";
+import chalk from "chalk";
 
 export interface ApiResponse {
   ok: boolean;
@@ -21,44 +22,59 @@ export class ZapiClient {
     };
   }
 
+  /** Creates a client that uses Bearer token auth (for partner endpoints). */
+  static partner(): ZapiClient {
+    const client = Object.create(ZapiClient.prototype) as ZapiClient;
+    client.baseUrl = "https://api.z-api.io";
+    const partnerToken = getPartnerToken();
+    client.headers = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(partnerToken ? { Authorization: `Bearer ${partnerToken}` } : {}),
+    };
+    return client;
+  }
+
   private url(path: string): string {
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
     const cleanPath = path.startsWith("/") ? path : `/${path}`;
     return `${this.baseUrl}${cleanPath}`;
   }
 
   async get(path: string): Promise<ApiResponse> {
-    const resp = await fetch(this.url(path), {
-      method: "GET",
-      headers: this.headers,
-    });
-    return this.handleResponse(resp);
+    return this.request("GET", path);
   }
 
   async post(path: string, body?: Record<string, unknown>): Promise<ApiResponse> {
-    const resp = await fetch(this.url(path), {
-      method: "POST",
-      headers: this.headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    return this.handleResponse(resp);
+    return this.request("POST", path, body);
   }
 
   async put(path: string, body?: Record<string, unknown>): Promise<ApiResponse> {
-    const resp = await fetch(this.url(path), {
-      method: "PUT",
-      headers: this.headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    return this.handleResponse(resp);
+    return this.request("PUT", path, body);
   }
 
   async delete(path: string, body?: Record<string, unknown>): Promise<ApiResponse> {
-    const resp = await fetch(this.url(path), {
-      method: "DELETE",
-      headers: this.headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    return this.handleResponse(resp);
+    return this.request("DELETE", path, body);
+  }
+
+  private async request(
+    method: string,
+    path: string,
+    body?: Record<string, unknown>,
+  ): Promise<ApiResponse> {
+    try {
+      const resp = await fetch(this.url(path), {
+        method,
+        headers: this.headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+      return this.handleResponse(resp);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(chalk.red(`✗ Network error: ${msg}`));
+      console.error(chalk.dim("  Check your internet connection and the Z-API service status."));
+      process.exit(1);
+    }
   }
 
   private async handleResponse(resp: Response): Promise<ApiResponse> {

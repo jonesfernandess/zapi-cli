@@ -53,7 +53,7 @@ export function registerChatCommands(program: Command): void {
   cmd.command("mute")
     .description("Mute a chat")
     .requiredOption("--phone <number>", "Phone number")
-    .requiredOption("--expiration <timestamp>", "Expiration timestamp", parseInt)
+    .requiredOption("--expiration <timestamp>", "Expiration timestamp (-1 = forever)", parseInt)
     .action(async (opts) => {
       const client = new ZapiClient();
       printResponse(
@@ -62,8 +62,20 @@ export function registerChatCommands(program: Command): void {
       );
     });
 
+  cmd.command("expiration")
+    .description("Set disappearing messages duration")
+    .requiredOption("--phone <number>", "Phone number")
+    .requiredOption("--value <seconds>", "Duration in seconds: 0 (off), 86400 (24h), 604800 (7d), 7776000 (90d)", parseInt)
+    .action(async (opts) => {
+      const client = new ZapiClient();
+      printResponse(
+        await client.post("/message-expiration", { phone: opts.phone, expiration: opts.value }),
+        "Chat Expiration",
+      );
+    });
+
   cmd.command("clear")
-    .description("Clear a chat")
+    .description("Clear a chat history")
     .requiredOption("--phone <number>", "Phone number")
     .action(async (opts) => {
       const client = new ZapiClient();

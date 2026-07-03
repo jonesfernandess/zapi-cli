@@ -13,13 +13,56 @@ export function registerGroupCommands(program: Command): void {
   cmd.command("create")
     .description("Create a new group")
     .requiredOption("--name <name>", "Group name")
-    .requiredOption("--phones <json>", 'JSON array of phone numbers')
+    .requiredOption("--phones <json>", "JSON array of phone numbers")
     .action(async (opts) => {
       const client = new ZapiClient();
       printResponse(
         await client.post("/create-group", { groupName: opts.name, phones: parseJsonArg(opts.phones) }),
         "Create Group",
       );
+    });
+
+  cmd.command("metadata")
+    .description("Get group metadata")
+    .requiredOption("--group-id <id>", "Group ID (e.g. GROUPID@g.us)")
+    .action(async (opts) => {
+      const client = new ZapiClient();
+      printResponse(await client.get(`/group-metadata/${opts.groupId}`), "Group Metadata");
+    });
+
+  cmd.command("invitation-metadata")
+    .description("Get metadata from a group invite URL")
+    .requiredOption("--invite-url <url>", "Invitation URL")
+    .action(async (opts) => {
+      const client = new ZapiClient();
+      printResponse(
+        await client.get(`/group-invitation-metadata/${encodeURIComponent(opts.inviteUrl)}`),
+        "Invitation Metadata",
+      );
+    });
+
+  cmd.command("invitation-link")
+    .description("Get invitation link for a group")
+    .requiredOption("--group-id <id>", "Group ID")
+    .action(async (opts) => {
+      const client = new ZapiClient();
+      printResponse(await client.get(`/invitation-link/${opts.groupId}`), "Invitation Link");
+    });
+
+  cmd.command("reset-invite")
+    .description("Reset the group invite link")
+    .requiredOption("--group-id <id>", "Group ID")
+    .action(async (opts) => {
+      const client = new ZapiClient();
+      printResponse(await client.post("/reset-invitation-link", { groupId: opts.groupId }), "Reset Invite Link");
+    });
+
+  cmd.command("accept-invite")
+    .description("Accept a group invite by code")
+    .requiredOption("--invite-code <code>", "Invite code from the invite URL")
+    .action(async (opts) => {
+      const client = new ZapiClient();
+      printResponse(await client.get(`/accept-invitation/${opts.inviteCode}`), "Accept Invite");
     });
 
   cmd.command("update-name")
@@ -34,6 +77,18 @@ export function registerGroupCommands(program: Command): void {
       );
     });
 
+  cmd.command("update-description")
+    .description("Update group description")
+    .requiredOption("--group-id <id>", "Group ID")
+    .requiredOption("--description <text>", "New description")
+    .action(async (opts) => {
+      const client = new ZapiClient();
+      printResponse(
+        await client.post("/update-group-description", { groupId: opts.groupId, description: opts.description }),
+        "Update Group Description",
+      );
+    });
+
   cmd.command("update-photo")
     .description("Update group photo")
     .requiredOption("--group-id <id>", "Group ID")
@@ -44,6 +99,21 @@ export function registerGroupCommands(program: Command): void {
         await client.post("/update-group-photo", { groupId: opts.groupId, groupPhoto: opts.photo }),
         "Update Group Photo",
       );
+    });
+
+  cmd.command("settings")
+    .description("Update group settings (who can send/edit)")
+    .requiredOption("--group-id <id>", "Group ID")
+    .option("--message-admin <bool>", "Only admins can send messages (true/false)")
+    .option("--edit-admin <bool>", "Only admins can edit group info (true/false)")
+    .action(async (opts) => {
+      const client = new ZapiClient();
+      const body = buildBody({
+        groupId: opts.groupId,
+        messageAdmin: opts.messageAdmin !== undefined ? opts.messageAdmin === "true" : undefined,
+        editAdmin: opts.editAdmin !== undefined ? opts.editAdmin === "true" : undefined,
+      });
+      printResponse(await client.post("/group-settings", body), "Group Settings");
     });
 
   cmd.command("add-participant")
@@ -67,6 +137,30 @@ export function registerGroupCommands(program: Command): void {
       printResponse(
         await client.post("/remove-participant", { groupId: opts.groupId, phones: parseJsonArg(opts.phones) }),
         "Remove Participant",
+      );
+    });
+
+  cmd.command("approve-participant")
+    .description("Approve pending participants")
+    .requiredOption("--group-id <id>", "Group ID")
+    .requiredOption("--phones <json>", "JSON array of phone numbers")
+    .action(async (opts) => {
+      const client = new ZapiClient();
+      printResponse(
+        await client.post("/approve-participant", { groupId: opts.groupId, phones: parseJsonArg(opts.phones) }),
+        "Approve Participant",
+      );
+    });
+
+  cmd.command("reject-participant")
+    .description("Reject pending participants")
+    .requiredOption("--group-id <id>", "Group ID")
+    .requiredOption("--phones <json>", "JSON array of phone numbers")
+    .action(async (opts) => {
+      const client = new ZapiClient();
+      printResponse(
+        await client.post("/reject-participant", { groupId: opts.groupId, phones: parseJsonArg(opts.phones) }),
+        "Reject Participant",
       );
     });
 
@@ -100,32 +194,5 @@ export function registerGroupCommands(program: Command): void {
     .action(async (opts) => {
       const client = new ZapiClient();
       printResponse(await client.post("/leave-group", { groupId: opts.groupId }), "Leave Group");
-    });
-
-  cmd.command("metadata")
-    .description("Get group metadata")
-    .requiredOption("--group-id <id>", "Group ID")
-    .action(async (opts) => {
-      const client = new ZapiClient();
-      printResponse(await client.get(`/group-metadata/${opts.groupId}`), "Group Metadata");
-    });
-
-  cmd.command("invitation-metadata")
-    .description("Get metadata from an invite URL")
-    .requiredOption("--invite-url <url>", "Invitation URL")
-    .action(async (opts) => {
-      const client = new ZapiClient();
-      printResponse(
-        await client.get(`/group-invitation-metadata/${encodeURIComponent(opts.inviteUrl)}`),
-        "Invitation Metadata",
-      );
-    });
-
-  cmd.command("invitation-link")
-    .description("Get invitation link for a group")
-    .requiredOption("--group-id <id>", "Group ID")
-    .action(async (opts) => {
-      const client = new ZapiClient();
-      printResponse(await client.get(`/invitation-link/${opts.groupId}`), "Invitation Link");
     });
 }
